@@ -1,5 +1,5 @@
 //A TESTER 
-// le programme joue en direct le son tordu en fonction de la valeur lue sur le potentiomètre A0
+// le programme supprime tous les sons en dessous d'une certaine puissance en fonction de la valeur lue sur le potentiomètre A0
 //
 #include <Audio.h>
 #include <Wire.h>
