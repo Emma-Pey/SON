@@ -5,6 +5,7 @@
 - (encodeur rotatif) * 2 effets + volume
 - carte SD OK
 - boutons tactiles
+- ajouter un écran
 
 ## Encodeur cliquable
 - cliquer pour sélectionner l'effet (affichage en serial)
