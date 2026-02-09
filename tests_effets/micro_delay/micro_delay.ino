@@ -33,7 +33,9 @@ void setup() {
   
   // enable the audio shield
   sgtl5000_1.enable();
+  sgtl5000_1.inputSelect(myInput);
   sgtl5000_1.volume(0.5);
+  sgtl5000_1.micGain(50);
   
   // configure a sine wave for the chirp
   // the original is turned on/off by an envelope effect
