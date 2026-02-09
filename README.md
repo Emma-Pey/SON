@@ -1,6 +1,6 @@
 # SON
-## A faire fonctionner
-
+## A faire 
+- refaire les soudures du micro
 - multiplexeur boutons
 - encodeur rotatif)*2 effets + volume
 - carte SD
