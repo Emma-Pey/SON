@@ -1,9 +1,9 @@
 # SON
 ## A faire 
-- refaire les soudures du micro
+- refaire les soudures du micro OK
 - multiplexeur boutons
-- encodeur rotatif)*2 effets + volume
-- carte SD
+- (encodeur rotatif) * 2 effets + volume
+- carte SD OK
 - boutons tactiles
 
 ## Encodeur cliquable
@@ -11,9 +11,10 @@
 - Effets :
   - pitch
   - echo
-  - passe haut/bas
-  - dorure de son (niooonnion)
+  - dorure de son (niooonnion) ?
   - accélaration
+- suppression du bruit de fond sur un potentiomètre séparé ?
+- ça garde en mémoire les paramètres de l'effet pour pouvoir les ajouter
 
 ## Boutons
 - enregistrer/arrêter + son/led
