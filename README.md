@@ -22,3 +22,6 @@
 - (son enregistré : sélectionner le bouton en restant appuyé) * 9
 - boutons à son prédéfini
 
+## Poster
+- quels problèmes on a cherché à résoudre
+- comment on les a résolus
