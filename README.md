@@ -11,9 +11,9 @@
 - cliquer pour sélectionner l'effet (affichage en serial)
 - Effets :
   - pitch
-  - echo
-  - dorure de son (niooonnion) ?
+  - echo (cathedrale?)
   - accélaration
+  - noise gate
 - suppression du bruit de fond sur un potentiomètre séparé ?
 - ça garde en mémoire les paramètres de l'effet pour pouvoir les ajouter
 
