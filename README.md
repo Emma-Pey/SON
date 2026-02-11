@@ -23,5 +23,5 @@
 - boutons à son prédéfini
 
 ## Poster
-- quels problèmes on a cherché à résoudre
+- quels problèmes on a cherché à résoudre (ex : trop de boutons et pas assez de pins sur le teensy)
 - comment on les a résolus
