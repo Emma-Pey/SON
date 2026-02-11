@@ -5,14 +5,16 @@ AudioEffectVarispeed::AudioEffectVarispeed()
 {
   memset(_buf, 0, sizeof(_buf));
   _w = 0;
-  _r = 0.0f;
+
+  // On démarre la lecture "loin derrière" l’écriture pour avoir du stock
+  _r = (float)((BUF_LEN + _w - MAX_LAG) % BUF_LEN);
 }
 
 void AudioEffectVarispeed::setSpeed(float s)
 {
-  // limites raisonnables
-  if (s < 0.25f) s = 0.25f;
-  if (s > 4.0f)  s = 4.0f;
+  // Limites raisonnables
+  if (s < 0.5f) s = 0.5f;
+  if (s > 2.5f) s = 2.5f;
   _targetSpeed = s;
 }
 
@@ -27,29 +29,32 @@ void AudioEffectVarispeed::update(void)
     return;
   }
 
-  // Lissage (évite les “cracks” quand tu bouges le pot)
+  // Lissage (évite clics quand tu bouges le pot)
   _speed += 0.02f * (_targetSpeed - _speed);
 
   for (int i = 0; i < AUDIO_BLOCK_SAMPLES; i++) {
 
-    // 1) écrit l'entrée dans le buffer
+    // 1) Écriture dans le buffer
     _buf[_w] = in->data[i];
     _w++;
     if (_w >= BUF_LEN) _w = 0;
 
-    // 2) sécurité : garder la lecture derrière l'écriture
+    // 2) Sécurité : garder une distance (lag) entre écriture et lecture
     uint32_t r_i = (uint32_t)_r;
-    uint32_t dist = (_w + BUF_LEN - r_i) % BUF_LEN;
+    uint32_t lag = (_w + BUF_LEN - r_i) % BUF_LEN;
 
-    if (dist < MIN_LAG) {
-      r_i = (_w + BUF_LEN - MIN_LAG) % BUF_LEN;
-      _r = (float)r_i;
-    } else if (dist > MAX_LAG) {
-      r_i = (_w + BUF_LEN - MAX_LAG) % BUF_LEN;
-      _r = (float)r_i;
+    // Si trop près : on recule la lecture loin derrière (sinon speed>1 est "annulé")
+    if (lag < MIN_LAG) {
+      uint32_t new_r = (_w + BUF_LEN - MAX_LAG) % BUF_LEN;
+      _r = (float)new_r;
+    }
+    // Si trop loin (ex: speed<1 longtemps) : on rapproche pour limiter la latence
+    else if (lag > MAX_LAG) {
+      uint32_t new_r = (_w + BUF_LEN - MIN_LAG) % BUF_LEN;
+      _r = (float)new_r;
     }
 
-    // 3) lecture interpolée (linéaire)
+    // 3) Lecture interpolée (linéaire) à position fractionnaire _r
     r_i = (uint32_t)_r;
     uint32_t r_i2 = r_i + 1;
     if (r_i2 >= BUF_LEN) r_i2 = 0;
@@ -57,13 +62,13 @@ void AudioEffectVarispeed::update(void)
     float frac = _r - (float)r_i;
     float s0 = (float)_buf[r_i];
     float s1 = (float)_buf[r_i2];
-    float y = s0 + frac * (s1 - s0);
+    float y  = s0 + frac * (s1 - s0);
 
-    // 4) avance le pointeur de lecture à la vitesse voulue
+    // 4) Avancer le pointeur de lecture selon la vitesse
     _r += _speed;
     while (_r >= (float)BUF_LEN) _r -= (float)BUF_LEN;
 
-    // 5) sortie
+    // 5) Sortie
     out->data[i] = (int16_t)y;
   }
 
@@ -71,3 +76,4 @@ void AudioEffectVarispeed::update(void)
   release(out);
   release(in);
 }
+
