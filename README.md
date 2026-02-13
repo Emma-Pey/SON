@@ -23,5 +23,5 @@
 - boutons à son prédéfini
 
 ## Poster
-- quels problèmes on a cherché à résoudre (ex : trop de boutons et pas assez de pins sur le teensy; jouer plusieurs sons en même temps grâce à 3 mixer de 4 voies (on peut faire un petit schéma, l'enregistrement qui commence avec du vide parce qu'on n'a pas encore parlé)
+- quels problèmes on a cherché à résoudre (ex : trop de boutons et pas assez de pins sur le teensy; jouer plusieurs sons en même temps grâce à 3 mixer de 4 voies (on peut faire un petit schéma, l'enregistrement qui commence avec du vide parce qu'on n'a pas encore parlé, problème de mémoire RAM du teensy avec faust noise gate => trouvé une librairie sur github qui le fait en utilisant moins de mémoire)
 - comment on les a résolus
