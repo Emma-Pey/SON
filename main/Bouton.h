@@ -12,7 +12,7 @@ enum EffectType {
   EFFECT_NOISE,
    //EFFECT_VARISPEED,
 //   EFFECT_REVERB,
-//   EFFECT_BITCRUSHER,
+  EFFECT_BITCRUSHER,
   EFFECT_COUNT};
 
 class Bouton {
@@ -41,14 +41,14 @@ public:
     AudioEffectDynamics noise;
     //AudioEffectVarispeed varispeed;
     //Reverb reverb;
-    //AudioEffectBitcrusher bitcrusher;
+    AudioEffectBitcrusher bitcrusher;
 
     //AudioMixer4 mixerDryWet;
 
     // ======== Connexions ========
     AudioConnection *patchCord1;
     AudioConnection *patchCord2;
-    // AudioConnection *patchCord3;
+    AudioConnection *patchCord3;
     // AudioConnection *patchCord4;
     // AudioConnection *patchCord5;
     // AudioConnection *patchCord6;
