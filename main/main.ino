@@ -3,6 +3,7 @@
 //// - ajouter les effets
 //// - enlever le potentiomètre et mettre un bouton à la place
 //// - debounce pour le bouton de choix des effets ?
+//// - les encodeurs vont rélger ça, 
 
 // Ce que ça fait : sélection d'un bouton par appui long sur le bouton, enregistrement d'un son en tournant le potentiomètre, rejouer le son quand on appuie dessus
 
@@ -49,7 +50,7 @@ AudioMixer4 mixerA; // voies 0..3
 //AudioMixer4 mixerC; // mix final (voies 0..3)
 
 // connection pour chaque player
-AudioConnection patchCordA0(boutons[0].noise, 0, mixerA, 0); //ici, remplacer pitch par le dernier effet ajouté dans Bouton?
+AudioConnection patchCordA0(boutons[0].bitcrusher, 0, mixerA, 0); //ici, remplacer pitch par le dernier effet ajouté dans Bouton?
 //AudioConnection patchCordA1(boutons[1].noise, 0, mixerA, 1);
 
 // A DECOMMENTER POUR PLUS DE VOICES A LA FOIS
@@ -140,7 +141,7 @@ void loop() {
     // Bouton maintenu : sélectionner le bouton si > 3s
     if (boutons[i].state == HIGH && !boutons[i].longPressTriggered) {
       if (millis() - boutons[i].pressStartTime >= longPressDuration) {
-        choiceButton = i;   // on stocke l'index du bouton
+        choiceButton = boutons[i].num;   // on stocke l'index du bouton
         boutons[i].longPressTriggered = true;
 
         Serial.print("Bouton sélectionné : ");
@@ -254,7 +255,7 @@ void stopRecording() {
 
 void startPlaying(int i) { 
   Serial.println("startPlaying : ");
-  Serial.println(i);
+  Serial.println(boutons[i].filename);
   boutons[i].play();
   mode = 2;
 }
