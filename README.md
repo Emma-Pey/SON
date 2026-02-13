@@ -1,4 +1,6 @@
 # SON
+## dépendances 
+TeensyVariablePlayback ?
 ## A faire 
 - refaire les soudures du micro OK
 - multiplexeur boutons
