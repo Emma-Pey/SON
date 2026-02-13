@@ -38,21 +38,32 @@ public:
 
     Pitch pitch;
     //noise_gate noise; // ne fonctionne pas
-    AudioEffectDynamics noise;
+    //AudioEffectDynamics noise;
     //AudioEffectVarispeed varispeed;
     //Reverb reverb;
-    AudioEffectBitcrusher bitcrusher;
+    //AudioEffectBitcrusher bitcrusher;
 
+    AudioMixer4              mixer1;
+    AudioEffectDelay         delay1;
+    AudioFilterStateVariable filter1;
+    AudioEffectReverb        reverb1;
     //AudioMixer4 mixerDryWet;
 
     // ======== Connexions ========
-    AudioConnection *patchCord1;
-    AudioConnection *patchCord2;
-    AudioConnection *patchCord3;
+    //AudioConnection *patchCord1;
+    //AudioConnection *patchCord2;
+    //AudioConnection *patchCord3;
+  
     // AudioConnection *patchCord4;
     // AudioConnection *patchCord5;
     // AudioConnection *patchCord6;
 
+    AudioConnection *patchCord7;
+    AudioConnection *patchCord8;
+    AudioConnection *patchCord9;
+    AudioConnection *patchCord10;
+
+    
     // ======== Constructeur ========
     Bouton(int number, int buttonPin);
 
