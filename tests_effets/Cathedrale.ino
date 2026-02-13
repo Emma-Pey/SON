@@ -1,3 +1,28 @@
+#include <Audio.h>
+#include <Wire.h>
+#include <SPI.h>
+
+// --- Composants ---
+AudioInputI2S            micInput;
+AudioMixer4              mixer1;
+AudioEffectDelay         delay1;
+AudioFilterStateVariable filter1;
+AudioEffectReverb        reverb1;
+AudioOutputI2S           audioOutput;
+
+// --- Connexions ---
+AudioConnection          patch1(micInput, 0, mixer1, 0);    // Micro vers mix (canal 0)
+AudioConnection          patch2(mixer1, 0, delay1, 0);     // Mix vers délai
+AudioConnection          patch3(delay1, 0, filter1, 0);    // Sortie délai vers filtre
+AudioConnection          patch4(filter1, 0, mixer1, 1);    // Sortie filtre vers feedback (canal 1)
+AudioConnection          patch5(mixer1, 0, reverb1, 0);    // Mix total vers réverb
+AudioConnection          patch6(reverb1, 0, audioOutput, 0);
+AudioConnection          patch7(reverb1, 0, audioOutput, 1);
+
+AudioControlSGTL5000     sgtl5000_1;
+
+const int potPin = A0;
+
 void setup() {
   AudioMemory(180); // On augmente encore pour la réverb + délai
 
