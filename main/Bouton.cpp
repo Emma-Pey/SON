@@ -12,18 +12,18 @@ Bouton::Bouton(int number, int buttonPin)
     // Création dynamique des connexions
     patchCord1 = new AudioConnection(playRaw, pitch);
     patchCord2 = new AudioConnection(pitch, noise);
+    patchCord3 = new AudioConnection(noise, bitcrusher);
 
     //patchCord3 = new AudioConnection(noise, varispeed);
     //patchCord4 = new AudioConnection(varispeed, reverb);
     //patchCord5 = new AudioConnection(reverb, bitcrusher);
-    //patchCord6 = new AudioConnection(bitcrusher, mixerDryWet, 0);
 }
 
 void Bouton::begin() {
     pinMode(pin, INPUT);
     sprintf(filename, "BUTTON%d.RAW", num); //créer le nom du fichier
 
-    //initialisation
+    //initialisation pour le noise gate, il faut mettre les autres aussi ?
     noise.gate(
         -40.0f,   // threshold plus bas
         0.8f,    // attack 80 ms
@@ -34,6 +34,9 @@ void Bouton::begin() {
     noise.compression(0.0f);      // désactive comp
     noise.limit(0.0f);            // désactive limiter
     noise.makeupGain(0.0f);       // pas d'auto gain
+
+    bitcrusher.sampleRate(44100);
+    bitcrusher.bits(16);
 }
 
 void Bouton::update() {//pas utile ?
@@ -76,16 +79,16 @@ void Bouton::nextEffect() {
 void Bouton::setEffectAmount(float value) {//value entre 0 et 1023
     switch(currentEffect) {
         case EFFECT_PITCH:
-        pitch.setParamValue("shift (semitones)", value*24/1023-12); // -12 - 12
-        break;
+            pitch.setParamValue("shift (semitones)", value*24/1023-12); // -12 - 12
+            break;
 
         /// à ajouter après (modifier les calculs pour notre cas):
 
         case EFFECT_NOISE:
-          //noise.setParamValue("Threshold",value*120/1023-120.0); // exemple
-          noise.gate(value*120/1023-120.0);
-          //Serial.println(value*120/1023-120.0);
-          break;
+            //noise.setParamValue("Threshold",value*120/1023-120.0); // exemple
+            noise.gate(value*120/1023-120.0);
+            //Serial.println(value*120/1023-120.0);
+            break;
 
     //     case EFFECT_VARISPEED:
     //       varispeed.playbackRate(value * 2.0f); // 0..2
@@ -95,16 +98,19 @@ void Bouton::setEffectAmount(float value) {//value entre 0 et 1023
     //       reverb.setRoomSize(value); // 0..1
     //       break;
 
-    //     case EFFECT_BITCRUSHER:
-    //       bitcrusher.bits(16 - value * 12); // 16..4 bits
-    //       break;
-    //   
+        case EFFECT_BITCRUSHER:
+            int rate = map(value, 0, 1023, 44100, 3000);
+            bitcrusher.sampleRate(rate);
+            int bits = map(value, 0, 1023, 16, 8);
+            bitcrusher.bits(bits);
+            break;
+        
     }
 }
 
 const char* Bouton::getEffectName(){
     static const char* names[] = {
-      "PITCH", "NOISE", "VARISPEED", "REVERB", "BITCRUSHER"
+      "PITCH", "NOISE", "BITCRUSHER"// ,"VARISPEED", "REVERB", 
     };
     return names[currentEffect];
 }
