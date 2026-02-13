@@ -2,6 +2,7 @@
 //// - tester avec les 9 boutons (des trucs à décommenter pour que ça fonctionne)
 //// - ajouter les effets
 //// - enlever le potentiomètre et mettre un bouton à la place
+//// - debounce pour le bouton de choix des effets ?
 
 // Ce que ça fait : sélection d'un bouton par appui long sur le bouton, enregistrement d'un son en tournant le potentiomètre, rejouer le son quand on appuie dessus
 
@@ -20,19 +21,23 @@
 
 const int myInput = AUDIO_INPUT_MIC;
 
-#define MAX_VOICES 2 // A MODIFIER POUR FAIRE JOUER PLUS de boutons
+#define MAX_VOICES 1 // A MODIFIER POUR FAIRE JOUER PLUS de boutons
+#define POT_PIN A0 // AMODIFIER POUR METTER LE PIN DU POTENTIOMETRE QUI CHANGE LES EFFETS
+#define EFFECTS_PIN 0 // A MODIFIER POUR LE PIN DU BOUTON QUI CHANGE LES EFFETS
+
+bool lastState = LOW; // POUR GARDER EN MEMOIRE L'ETAT DU BOUTON DE CHANGEMENT D'EFFET
 
 //const int nbButtons = MAX_VOICES; 
-int buttonPins[MAX_VOICES] = {0,1}; // A MODIFIER AVEC LES NUMEROS DE PINS DE TOUS LES BOUTONS
+int buttonPins[MAX_VOICES] = {1}; // A MODIFIER AVEC LES NUMEROS DE PINS DE TOUS LES BOUTONS
 
 Bouton boutons[MAX_VOICES] = {
-    Bouton(0, 0),
+    //Bouton(0, 0),
     Bouton(1, 1)
 };
 
 AudioInputI2S            i2s2;           //xy=105,63
 AudioRecordQueue         queue1;         //xy=281,63
-AudioPlaySdRaw playRaw[MAX_VOICES]; //plusieurs players pour joeur plusieurs sons en même temps
+//AudioPlaySdRaw playRaw[MAX_VOICES]; //plusieurs players pour joeur plusieurs sons en même temps // je viens de supprimer ça 
 AudioOutputI2S           i2s1;           //xy=470,120
 
 AudioConnection          patchCord1(i2s2, 0, queue1, 0);
@@ -40,12 +45,12 @@ AudioConnection          patchCord1(i2s2, 0, queue1, 0);
 
 // mixers
 AudioMixer4 mixerA; // voies 0..3
-AudioMixer4 mixerB; // voies 4..7
-AudioMixer4 mixerC; // mix final (voies 0..3)
+//AudioMixer4 mixerB; // voies 4..7
+//AudioMixer4 mixerC; // mix final (voies 0..3)
 
 // connection pour chaque player
-AudioConnection patchCordA0(boutons[0].playRaw, 0, mixerA, 0);
-AudioConnection patchCordA1(boutons[1].playRaw, 0, mixerA, 1);
+AudioConnection patchCordA0(boutons[0].noise, 0, mixerA, 0); //ici, remplacer pitch par le dernier effet ajouté dans Bouton?
+//AudioConnection patchCordA1(boutons[1].noise, 0, mixerA, 1);
 
 // A DECOMMENTER POUR PLUS DE VOICES A LA FOIS
 // AudioConnection patchCordA2(playRaw[2], 0, mixerA, 2);
@@ -57,12 +62,12 @@ AudioConnection patchCordA1(boutons[1].playRaw, 0, mixerA, 1);
 // AudioConnection patchCordB3(playRaw[7], 0, mixerB, 3);
 
 // mixer final : on mixe A+B + la voix 8
-AudioConnection patchCordC0(mixerA, 0, mixerC, 0); //inutile pour 2 voix
+//AudioConnection patchCordC0(mixerA, 0, mixerC, 0); //inutile pour 2 voix
 //AudioConnection patchCordC1(mixerB, 0, mixerC, 1);
 //AudioConnection patchCordC2(playRaw[8], 0, mixerC, 2);
 
-AudioConnection          patchCordOutL(mixerC, 0, i2s1, 0);
-AudioConnection          patchCordOutR(mixerC, 0, i2s1, 1);
+AudioConnection          patchCordOutL(mixerA, 0, i2s1, 0);
+AudioConnection          patchCordOutR(mixerA, 0, i2s1, 1);
 AudioControlSGTL5000     sgtl5000_1;     //xy=265,212
 
 // Variables de gestion
@@ -84,7 +89,7 @@ char filename[20];
 void setup() {
   Serial.begin(9600);
   sprintf(filename, "BUTTON%d.RAW", choiceButton);
-
+  pinMode(EFFECTS_PIN, INPUT);
   // Configure the pushbutton pins
   for (int i=0; i < MAX_VOICES ; i++) {
     boutons[i].begin();
@@ -92,7 +97,7 @@ void setup() {
 
   // Audio connections require memory, and the record queue
   // uses this memory to buffer incoming audio.
-  AudioMemory(60);
+  AudioMemory(200);
 
   // Enable the audio shield, select input, and enable output
   sgtl5000_1.enable();
@@ -103,8 +108,8 @@ void setup() {
   //gain des mixers
   for (int i = 0; i < 4; i++) {
     mixerA.gain(i, 0.5);
-    mixerB.gain(i, 0.5);
-    mixerC.gain(i, 0.5);
+    //mixerB.gain(i, 0.5);
+    //mixerC.gain(i, 0.5);
   }
 
   // Initialize the SD card
@@ -124,7 +129,7 @@ void loop() {
   //regarder tous les boutons 
   for (int i = 0; i < MAX_VOICES; i++) {
 
-    boutons[i].state = digitalRead(buttonPins[i]);
+    boutons[i].state = digitalRead(boutons[i].pin);
 
     // Bouton pressé (transition LOW -> HIGH)
     if (boutons[i].lastState == LOW && boutons[i].state == HIGH) {
@@ -146,39 +151,51 @@ void loop() {
       }
     }
 
-    // Bouton relâché : jouer un son si nécessaire
+    // Bouton relâché : jouer un son si < 3s
     if (boutons[i].lastState == HIGH && boutons[i].state == LOW) {
       boutons[i].longPressTriggered = false;
       if (millis() - boutons[i].pressStartTime < longPressDuration) { // on a juste cliqué sur le bouton
         //Serial.println("Play Button Pressed");
-        if (mode == 1) {
+        if (mode == 1) { // pas forcément besoin de ça ? on peut record et play en même temps ?
           //Serial.println("stopRecording()");
           stopRecording();
         }
         startPlaying(i);
       }
     }
+    if (i == choiceButton) { //si c'est le bouton sélectionné on modifie
+      // ajouter la modification du nom de l'effet courant
+      bool state = digitalRead(EFFECTS_PIN);
+      //Serial.println(state);
+      if (lastState == LOW && state == HIGH) { //potentiellement ajouter un debounce
+        boutons[i].nextEffect();
+        Serial.println(boutons[i].getEffectName());
+      }
+      float potValue = analogRead(POT_PIN);
+      boutons[i].setEffectAmount(potValue);
 
+      lastState = state;
+    }
     boutons[i].lastState = boutons[i].state;
   }
-
-  // Potentiomètre enregistreur
-  if (analogRead(A0)>600) { // on met un gap pour pas que ça enregistre et stoppe l'enregistrement à cause des fulctuations
-    if (mode == 2) {//on est en train de jouer
-      //Serial.println("stopPlaying()");
-      stopPlaying();    
-    }
-    if (mode == 0) {
-      //Serial.println("startRecording()");
-      startRecording();
-    }
-  }
-  if (analogRead(A0)<500) {
-    if (mode == 1) {
-      //Serial.println("stopRecording()");
-      stopRecording();
-    }
-  }
+  // // POUR l'instant on va utiliser le potentiomètre pour gérer les effets
+  // // Potentiomètre enregistreur
+  // if (analogRead(A0)>600) { // on met un gap pour pas que ça enregistre et stoppe l'enregistrement à cause des fulctuations
+  //   if (mode == 2) {//on est en train de jouer
+  //     //Serial.println("stopPlaying()");
+  //     stopPlaying();    
+  //   }
+  //   if (mode == 0) {
+  //     //Serial.println("startRecording()");
+  //     startRecording();
+  //   }
+  // }
+  // if (analogRead(A0)<500) {
+  //   if (mode == 1) {
+  //     //Serial.println("stopRecording()");
+  //     stopRecording();
+  //   }
+  // }
 
   // If we're playing or recording, carry on...
   if (mode == 1) {
