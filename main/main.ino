@@ -1,11 +1,12 @@
 //A FAIRE : 
+//// - tester avec plusieurs boutons
 //// - tester avec les 9 boutons (des trucs à décommenter pour que ça fonctionne)
-//// - ajouter les effets
 //// - enlever le potentiomètre et mettre un bouton à la place
 //// - debounce pour le bouton de choix des effets ?
-//// - les encodeurs vont rélger ça, 
+//// - les encodeurs vont régler le problème des effets qui ne commencent pas à 0
+//// - potentiomètre pour le son
 
-// Ce que ça fait : sélection d'un bouton par appui long sur le bouton, enregistrement d'un son en tournant le potentiomètre, rejouer le son quand on appuie dessus
+//NOTE : pour modifier un effet, il y a un "sécurité" : il faut tourner le potentiomètre jusqu'à la valeur actuelle de l'effet, puis ça débloque et on peut modifier l'effet
 
 #include <Bounce.h>
 #include <Audio.h>
@@ -23,15 +24,14 @@
 const int myInput = AUDIO_INPUT_MIC;
 
 #define MAX_VOICES 1 // A MODIFIER POUR FAIRE JOUER PLUS de boutons
-#define POT_PIN A0 // AMODIFIER POUR METTER LE PIN DU POTENTIOMETRE QUI CHANGE LES EFFETS
+#define POT_PIN A0 // AMODIFIER POUR METTER LE PIN DU POTENTIOMETRE QUI enregistre
 #define EFFECTS_PIN 0 // A MODIFIER POUR LE PIN DU BOUTON QUI CHANGE LES EFFETS
 
-bool lastState = LOW; // POUR GARDER EN MEMOIRE L'ETAT DU BOUTON DE CHANGEMENT D'EFFET
+bool lastState = LOW; //bouton changement état
 
-//const int nbButtons = MAX_VOICES; 
 int buttonPins[MAX_VOICES] = {1}; // A MODIFIER AVEC LES NUMEROS DE PINS DE TOUS LES BOUTONS
 
-Bouton boutons[MAX_VOICES] = {
+Bouton boutons[MAX_VOICES] = { // A MODIFIER POUR AJOUTER TOUS LES BOUTONS (on ne peut pas faire de boucle for dans l'init)
     //Bouton(0, 0),
     Bouton(1, 1)
 };
@@ -46,14 +46,13 @@ AudioConnection          patchCord1(i2s2, 0, queue1, 0);
 
 // mixers
 AudioMixer4 mixerA; // voies 0..3
-//AudioMixer4 mixerB; // voies 4..7
+//AudioMixer4 mixerB; // voies 4..7 // A DECOMMENTER POUR PLUS DE BOUTONS
 //AudioMixer4 mixerC; // mix final (voies 0..3)
 
 // connection pour chaque player
-AudioConnection patchCordA0(boutons[0].bitcrusher, 0, mixerA, 0); //ici, remplacer pitch par le dernier effet ajouté dans Bouton?
-//AudioConnection patchCordA1(boutons[1].noise, 0, mixerA, 1);
+AudioConnection patchCordA0(boutons[0].bitcrusher, 0, mixerA, 0); //A MODIFIER ? ici, remplacer [0].blabla par le dernier effet ajouté dans Bouton
+//AudioConnection patchCordA1(boutons[1].noise, 0, mixerA, 1); // A DECOMMENTER POUR PLUS DE VOICES A LA FOIS
 
-// A DECOMMENTER POUR PLUS DE VOICES A LA FOIS
 // AudioConnection patchCordA2(playRaw[2], 0, mixerA, 2);
 // AudioConnection patchCordA3(playRaw[3], 0, mixerA, 3);
 
@@ -70,12 +69,6 @@ AudioConnection patchCordA0(boutons[0].bitcrusher, 0, mixerA, 0); //ici, remplac
 AudioConnection          patchCordOutL(mixerA, 0, i2s1, 0);
 AudioConnection          patchCordOutR(mixerA, 0, i2s1, 1);
 AudioControlSGTL5000     sgtl5000_1;     //xy=265,212
-
-// Variables de gestion
-//bool buttonState[nbButtons];
-//bool lastButtonState[nbButtons];
-//unsigned long pressStartTime[nbButtons];
-//bool longPressTriggered[nbButtons];
 
 const unsigned long longPressDuration = 2000; // 2 secondes
 
@@ -109,7 +102,7 @@ void setup() {
   //gain des mixers
   for (int i = 0; i < 4; i++) {
     mixerA.gain(i, 0.5);
-    //mixerB.gain(i, 0.5);
+    //mixerB.gain(i, 0.5); // A DECOMMENTER SI PLUS DE BOUTONS
     //mixerC.gain(i, 0.5);
   }
 
