@@ -5,13 +5,13 @@
 #include <Audio.h>
 #include "Pitch.h"
 #include "effect_dynamics.h" //noise gate
-// #include "Reverb.h"
+#include <TeensyVariablePlayback.h>
 
 enum EffectType {
   EFFECT_PITCH, 
   EFFECT_NOISE,
-   //EFFECT_VARISPEED,
-//   EFFECT_REVERB,
+  EFFECT_VARISPEED,
+  EFFECT_REVERB,
   EFFECT_BITCRUSHER,
   EFFECT_COUNT};
 
@@ -24,6 +24,9 @@ public:
     char filename[20];
 
     int currentEffect;
+    float effectValues[5] = {512, 512, 512, 512, 512}; 
+    const int pickupThreshold = 20;
+    bool potLocked = true;
 
     bool state;
     bool lastState;
@@ -33,37 +36,37 @@ public:
 
     float gain;   // 0.0 → 1.0 ?
 
+    float basePitch;       // pitch manuel de l'utilisateur
+    float speedCompensation; // compensation liée à la vitesse
+
     // ======== Audio Objects ========
-    AudioPlaySdRaw playRaw;
+    AudioPlaySdResmp playRaw;
 
     Pitch pitch;
-    //noise_gate noise; // ne fonctionne pas
-    //AudioEffectDynamics noise;
-    //AudioEffectVarispeed varispeed;
-    //Reverb reverb;
-    //AudioEffectBitcrusher bitcrusher;
-
+    AudioEffectDynamics noise;
     AudioMixer4              mixer1;
     AudioEffectDelay         delay1;
     AudioFilterStateVariable filter1;
     AudioEffectReverb        reverb1;
-    //AudioMixer4 mixerDryWet;
+    AudioEffectBitcrusher bitcrusher;
 
     // ======== Connexions ========
-    //AudioConnection *patchCord1;
-    //AudioConnection *patchCord2;
-    //AudioConnection *patchCord3;
-  
-    // AudioConnection *patchCord4;
-    // AudioConnection *patchCord5;
-    // AudioConnection *patchCord6;
+    AudioConnection *patchCord1;
+    AudioConnection *patchCord2;
+    AudioConnection *patchCord3;
+    AudioConnection *patchCord4;
+    
+    AudioConnection *patchCord5;
+    AudioConnection *patchCord6;
 
     AudioConnection *patchCord7;
     AudioConnection *patchCord8;
     AudioConnection *patchCord9;
     AudioConnection *patchCord10;
+    AudioConnection *patchCord11;
 
-    
+
+
     // ======== Constructeur ========
     Bouton(int number, int buttonPin);
 
