@@ -1,12 +1,13 @@
 //A FAIRE : 
 //// - tester avec plusieurs boutons
 //// - tester avec les 9 boutons (des trucs à décommenter pour que ça fonctionne)
-//// - enlever le potentiomètre et mettre un bouton à la place
-//// - debounce pour le bouton de choix des effets ?
-//// - les encodeurs vont régler le problème des effets qui ne commencent pas à 0
 //// - potentiomètre pour le son
-
-//NOTE : pour modifier un effet, il y a un "sécurité" : il faut tourner le potentiomètre jusqu'à la valeur actuelle de l'effet, puis ça débloque et on peut modifier l'effet
+//// - multiplexeur avec 1, 2, ..., 10 boutons
+      // - boutons pour jouer un son
+      // - bouton d'enregistrement
+//// - encodeur
+      // - click pour changement d'effet
+      // - tourner pour changer la valeur (notamment ajuster le facteur dans bouton.cpp)
 
 #include <Bounce.h>
 #include <Audio.h>
@@ -14,28 +15,48 @@
 #include <SPI.h>
 #include <SD.h>
 #include <SerialFlash.h>
+#include <Encoder.h> // librairie encodeur optimisée pour teensy
 #include "Bouton.h"
+
 
 // Use these with the Teensy Audio Shield
 #define SDCARD_CS_PIN    10
 #define SDCARD_MOSI_PIN  7   // Teensy 4 ignores this, uses pin 11
 #define SDCARD_SCK_PIN   14  // Teensy 4 ignores this, uses pin 13
 
+#define S0 0 //A MODIFIER : les numéros des pins du multiplexeur
+#define S1 1
+#define S2 2
+#define S3 3
+#define SIG_PIN 4
+
+#define MAX_VOICES 1 // A MODIFIER POUR FAIRE JOUER PLUS de boutons, 1 bouton pour l'instant
+#define EFFECTS_PIN 16 // A MODIFIER POUR LE PIN du bouton de l'encodeur 
+#define ENC_PIN_A 17 //A MODIFIER AVEC LES NUMEROS DE PIN DE L'ENCODEUR
+#define ENC_PIN_B 22
+
+// bouton enregistrement
+bool lastStateREC = LOW; 
+unsigned long lastClickTimeREC = 0;
+unsigned long debounceDelay = 50; // 50ms pour filtrer les parasites
+const int BUTTON_MUX_CH = 9;    // Votre bouton est sur le canal 9
+
 const int myInput = AUDIO_INPUT_MIC;
 
-#define MAX_VOICES 1 // A MODIFIER POUR FAIRE JOUER PLUS de boutons
-#define POT_PIN A0 // AMODIFIER POUR METTER LE PIN DU POTENTIOMETRE QUI enregistre
-#define EFFECTS_PIN 0 // A MODIFIER POUR LE PIN DU BOUTON QUI CHANGE LES EFFETS
+// encodeur
+bool lastStateEnc = LOW; //bouton changement état 
+unsigned long lastClickTimeEnc = 0; // pour debounce l'encodeur
+Encoder myEnc(ENC_PIN_A, ENC_PIN_B);
+long oldPos = -999;
 
-bool lastState = LOW; //bouton changement état
-
+// boutons 0-8
 int buttonPins[MAX_VOICES] = {1}; // A MODIFIER AVEC LES NUMEROS DE PINS DE TOUS LES BOUTONS
-
 Bouton boutons[MAX_VOICES] = { // A MODIFIER POUR AJOUTER TOUS LES BOUTONS (on ne peut pas faire de boucle for dans l'init)
     //Bouton(0, 0),
     Bouton(1, 1)
 };
 
+// audio
 AudioInputI2S            i2s2;           //xy=105,63
 AudioRecordQueue         queue1;         //xy=281,63
 //AudioPlaySdRaw playRaw[MAX_VOICES]; //plusieurs players pour joeur plusieurs sons en même temps // je viens de supprimer ça 
@@ -73,7 +94,7 @@ AudioControlSGTL5000     sgtl5000_1;     //xy=265,212
 const unsigned long longPressDuration = 2000; // 2 secondes
 
 // Remember which mode we're doing
-int mode = 0;  // 0=stopped, 1=recording, 2=playing
+int mode = 0;  // 0=stopped, 1=recording, 2=playing // à enlever ?
 int choiceButton = 0; //0..8=le  bouton sélectionné
 
 // The file where data is recorded
@@ -83,7 +104,15 @@ char filename[20];
 void setup() {
   Serial.begin(9600);
   sprintf(filename, "BUTTON%d.RAW", choiceButton);
-  pinMode(EFFECTS_PIN, INPUT);
+
+  // Multiplexeur
+  pinMode(S0, OUTPUT);
+  pinMode(S1, OUTPUT);
+  pinMode(S2, OUTPUT);
+  pinMode(S3, OUTPUT);
+  pinMode(SIG_PIN, INPUT_PULLUP);
+
+  pinMode(EFFECTS_PIN, INPUT_PULLUP); // on aura plus besoin de ça avec le MUX
   // Configure the pushbutton pins
   for (int i=0; i < MAX_VOICES ; i++) {
     boutons[i].begin();
@@ -123,7 +152,7 @@ void loop() {
   //regarder tous les boutons 
   for (int i = 0; i < MAX_VOICES; i++) {
 
-    boutons[i].state = digitalRead(boutons[i].pin);
+    boutons[i].state = readMux(i); //digitalRead(boutons[i].pin)
 
     // Bouton pressé (transition LOW -> HIGH)
     if (boutons[i].lastState == LOW && boutons[i].state == HIGH) {
@@ -134,7 +163,7 @@ void loop() {
     // Bouton maintenu : sélectionner le bouton si > 3s
     if (boutons[i].state == HIGH && !boutons[i].longPressTriggered) {
       if (millis() - boutons[i].pressStartTime >= longPressDuration) {
-        choiceButton = boutons[i].num;   // on stocke l'index du bouton
+        choiceButton = i;  //boutons[i].num // on stocke l'index du bouton
         boutons[i].longPressTriggered = true;
 
         Serial.print("Bouton sélectionné : ");
@@ -157,39 +186,53 @@ void loop() {
         startPlaying(i);
       }
     }
-    if (i == choiceButton) { //si c'est le bouton sélectionné on modifie
-      // ajouter la modification du nom de l'effet courant
-      bool state = digitalRead(EFFECTS_PIN);
-      //Serial.println(state);
-      if (lastState == LOW && state == HIGH) { //potentiellement ajouter un debounce
-        boutons[i].nextEffect();
-        Serial.println(boutons[i].getEffectName());
-      }
-      float potValue = analogRead(POT_PIN);
-      boutons[i].setEffectAmount(potValue);
 
-      lastState = state;
+    //si c'est le bouton sélectionné on modifie l'effet
+    if (i == choiceButton) { 
+      bool stateEnc = digitalRead(EFFECTS_PIN);
+      if (lastStateEnc == LOW && stateEnc == HIGH) { 
+        if (millis() - lastClickTimeEnc > debounceDelay) { // debounce
+          lastClickTimeEnc = millis();
+          boutons[i].nextEffect();
+          Serial.println(boutons[i].getEffectName());
+        }
+      }
+      long newPos = myEnc.read() / 4;  // 1 pas par cran
+      // mémoriser l'ancienne position
+      static long oldPos = 0;
+      long delta = newPos - oldPos;
+      oldPos = newPos;
+      if (delta != 0) {
+        boutons[i].changeEffectAmount(delta);
+      }
+      lastStateEnc = stateEnc;
     }
     boutons[i].lastState = boutons[i].state;
   }
-  // // POUR l'instant on va utiliser le potentiomètre pour gérer les effets
-  // // Potentiomètre enregistreur
-  // if (analogRead(A0)>600) { // on met un gap pour pas que ça enregistre et stoppe l'enregistrement à cause des fulctuations
-  //   if (mode == 2) {//on est en train de jouer
-  //     //Serial.println("stopPlaying()");
-  //     stopPlaying();    
-  //   }
-  //   if (mode == 0) {
-  //     //Serial.println("startRecording()");
-  //     startRecording();
-  //   }
-  // }
-  // if (analogRead(A0)<500) {
-  //   if (mode == 1) {
-  //     //Serial.println("stopRecording()");
-  //     stopRecording();
-  //   }
-  // }
+
+  // Enregistrement
+  bool stateREC = readMux(BUTTON_MUX_CH); 
+  // Détection de clic (changement d'état)
+  if (stateREC != lastStateREC) {
+    lastClickTimeREC = millis(); // Reset le timer de rebond
+  }
+  if ((millis() - lastClickTimeREC) > debounceDelay) {
+    // Si l'état a changé et est stable
+    if (stateREC == HIGH && lastStateREC == LOW) { 
+      // Le bouton vient d'être pressé (LOW car Pullup)
+      if (mode == 0) { // On est à l'arrêt -> on enregistre
+        startRecording();
+      } 
+      else if (mode == 1) { // On enregistre -> on arrête
+        stopRecording();
+      }
+      else if (mode == 2) { // On jouait -> on arrête et on peut ré-enregistrer
+        stopPlaying();
+        startRecording();
+      }
+    }
+  }
+  lastStateREC = stateREC;
 
   // If we're playing or recording, carry on...
   if (mode == 1) {
@@ -198,6 +241,19 @@ void loop() {
   if (mode == 2) {
     continuePlaying();
   }
+}
+
+void selectChannel(int channel) {
+  digitalWrite(S0, channel & 0x01);
+  digitalWrite(S1, (channel >> 1) & 0x01);
+  digitalWrite(S2, (channel >> 2) & 0x01);
+  digitalWrite(S3, (channel >> 3) & 0x01);
+}
+
+int readMux(int channel) {
+  selectChannel(channel);
+  delayMicroseconds(5); // petit temps de stabilisation
+  return !digitalRead(SIG_PIN); // ! car on a mis input pullup pour éviter d'avoir à utiliser des résistances
 }
 
 void startRecording() {
