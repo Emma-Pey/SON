@@ -18,15 +18,15 @@ enum EffectType {
 class Bouton {
 public:
     // ======== Données ========
-    int num;
+    int num; // il n'y aura plus besoin de ces deux là au final, on regarde juste l'indice des boutons dans la liste avec le multiplexeur
     int pin;
 
     char filename[20];
 
     int currentEffect;
     float effectValues[5] = {512, 512, 512, 512, 512}; 
-    const int pickupThreshold = 20;
-    bool potLocked = true;
+    //const int pickupThreshold = 20; // plus besoin de ces deux-là avec l'encodeur
+    //bool potLocked = true; ///////////
 
     bool state;
     bool lastState;
@@ -77,7 +77,7 @@ public:
     void setGain(float g);
 
     void nextEffect();
-    void setEffectAmount(float value);
+    void changeEffectAmount(int delta);
 
     float getOutput();
 
