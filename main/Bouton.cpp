@@ -22,12 +22,10 @@ Bouton::Bouton(int number, int buttonPin)
     patchCord11 = new AudioConnection(reverb1, 0, mixer1, 0);
 
     patchCord6 = new AudioConnection(mixer1, bitcrusher);
-
-
 }
 
 void Bouton::begin() {
-    pinMode(pin, INPUT);
+    // pinMode(pin, INPUT); //plus besoin de ça avec le MUX
     sprintf(filename, "BUTTON%d.RAW", num); //créer le nom du fichier
 
     // Speed
@@ -93,23 +91,31 @@ void Bouton::setGain(float g) {
 
 void Bouton::nextEffect() {
   currentEffect++;
-  potLocked = true;  // On relock le potentiomètre
+  // potLocked = true;  // On relock le potentiomètre
   if (currentEffect >= EFFECT_COUNT) currentEffect = 0;
 }
 
-void Bouton::setEffectAmount(float value) {//value entre 0 et 1023
+void Bouton::changeEffectAmount(int delta) {
 
-    int currentValue = effectValues[currentEffect];
 
+    // A ENLEVER POUR UTILISER L'ENCODEUR
     // Si le pot n’a pas encore rattrapé la valeur mémorisée
-    if (potLocked) {
-        if (abs(value - currentValue) < pickupThreshold) {
-            potLocked = false; // On déverrouille
-        } else {
-            return; // On ignore le mouvement
-        }
-    }
-    effectValues[currentEffect] = value;
+
+    // int currentValue = effectValues[currentEffect];
+    // if (potLocked) {
+    //     if (abs(value - currentValue) < pickupThreshold) {
+    //         potLocked = false; // On déverrouille
+    //     } else {
+    //         return; // On ignore le mouvement
+    //     }
+    // }
+
+    //effectValues[currentEffect] = value;
+
+    effectValues[currentEffect] += delta * 4; // sensibilité, changer le *4 par *8, *16 si on veut que chaque cran de l'encodeur modifie plus vite
+    effectValues[currentEffect] = constrain(effectValues[currentEffect], 0, 1023);
+    float value = effectValues[currentEffect];
+
     switch(currentEffect) {
         case EFFECT_PITCH:
             basePitch = value*24/1023-12; //-12 à 12
