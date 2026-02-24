@@ -30,7 +30,7 @@
 #define S3 3
 #define SIG_PIN 4
 
-#define MAX_VOICES 1 // A MODIFIER POUR FAIRE JOUER PLUS de boutons, 1 bouton pour l'instant
+#define MAX_VOICES 9 // A MODIFIER POUR FAIRE JOUER PLUS de boutons, 1 bouton pour l'instant
 #define EFFECTS_PIN 16 // A MODIFIER POUR LE PIN du bouton de l'encodeur 
 #define ENC_PIN_A 17 //A MODIFIER AVEC LES NUMEROS DE PIN DE L'ENCODEUR
 #define ENC_PIN_B 22
@@ -39,7 +39,7 @@
 bool lastStateREC = LOW; 
 unsigned long lastClickTimeREC = 0;
 unsigned long debounceDelay = 50; // 50ms pour filtrer les parasites
-const int BUTTON_MUX_CH = 9;    // Votre bouton est sur le canal 9
+const int BUTTON_REC = 9;    // bouton enregistrement (le 10e)
 
 const int myInput = AUDIO_INPUT_MIC;
 
@@ -52,14 +52,20 @@ long oldPos = -999;
 // boutons 0-8
 int buttonPins[MAX_VOICES] = {1}; // A MODIFIER AVEC LES NUMEROS DE PINS DE TOUS LES BOUTONS
 Bouton boutons[MAX_VOICES] = { // A MODIFIER POUR AJOUTER TOUS LES BOUTONS (on ne peut pas faire de boucle for dans l'init)
-    //Bouton(0, 0),
-    Bouton(1, 1)
-};
+    Bouton(0), 
+    Bouton(1),
+    Bouton(2),
+    Bouton(3),
+    Bouton(4),
+    Bouton(5),
+    Bouton(6),
+    Bouton(7),
+    Bouton(8),
+    };
 
 // audio
 AudioInputI2S            i2s2;           //xy=105,63
 AudioRecordQueue         queue1;         //xy=281,63
-//AudioPlaySdRaw playRaw[MAX_VOICES]; //plusieurs players pour joeur plusieurs sons en même temps // je viens de supprimer ça 
 AudioOutputI2S           i2s1;           //xy=470,120
 
 AudioConnection          patchCord1(i2s2, 0, queue1, 0);
@@ -67,34 +73,34 @@ AudioConnection          patchCord1(i2s2, 0, queue1, 0);
 
 // mixers
 AudioMixer4 mixerA; // voies 0..3
-//AudioMixer4 mixerB; // voies 4..7 // A DECOMMENTER POUR PLUS DE BOUTONS
-//AudioMixer4 mixerC; // mix final (voies 0..3)
+AudioMixer4 mixerB; // voies 4..7 // A DECOMMENTER POUR PLUS DE BOUTONS
+AudioMixer4 mixerC; // mix final (voies 0..3)
 
 // connection pour chaque player
 AudioConnection patchCordA0(boutons[0].bitcrusher, 0, mixerA, 0); //A MODIFIER ? ici, remplacer [0].blabla par le dernier effet ajouté dans Bouton
-//AudioConnection patchCordA1(boutons[1].noise, 0, mixerA, 1); // A DECOMMENTER POUR PLUS DE VOICES A LA FOIS
+AudioConnection patchCordA1(boutons[1].bitcrusher, 0, mixerA, 1); // A DECOMMENTER POUR PLUS DE VOICES A LA FOIS
 
-// AudioConnection patchCordA2(playRaw[2], 0, mixerA, 2);
-// AudioConnection patchCordA3(playRaw[3], 0, mixerA, 3);
+AudioConnection patchCordA2(boutons[2].bitcrusher, 0, mixerA, 2);
+AudioConnection patchCordA3(boutons[3].bitcrusher, 0, mixerA, 3);
 
-// AudioConnection patchCordB0(playRaw[4], 0, mixerB, 0);
-// AudioConnection patchCordB1(playRaw[5], 0, mixerB, 1);
-// AudioConnection patchCordB2(playRaw[6], 0, mixerB, 2);
-// AudioConnection patchCordB3(playRaw[7], 0, mixerB, 3);
+AudioConnection patchCordB0(boutons[4].bitcrusher, 0, mixerB, 0);
+AudioConnection patchCordB1(boutons[5].bitcrusher, 0, mixerB, 1);
+AudioConnection patchCordB2(boutons[6].bitcrusher, 0, mixerB, 2);
+AudioConnection patchCordB3(boutons[7].bitcrusher, 0, mixerB, 3);
 
 // mixer final : on mixe A+B + la voix 8
-//AudioConnection patchCordC0(mixerA, 0, mixerC, 0); //inutile pour 2 voix
-//AudioConnection patchCordC1(mixerB, 0, mixerC, 1);
-//AudioConnection patchCordC2(playRaw[8], 0, mixerC, 2);
+AudioConnection patchCordC0(mixerA, 0, mixerC, 0); //inutile pour 2 voix
+AudioConnection patchCordC1(mixerB, 0, mixerC, 1);
+AudioConnection patchCordC2(boutons[8].bitcrusher, 0, mixerC, 2);
 
-AudioConnection          patchCordOutL(mixerA, 0, i2s1, 0);
-AudioConnection          patchCordOutR(mixerA, 0, i2s1, 1);
+AudioConnection          patchCordOutL(mixerC, 0, i2s1, 0);
+AudioConnection          patchCordOutR(mixerC, 0, i2s1, 1);
 AudioControlSGTL5000     sgtl5000_1;     //xy=265,212
 
 const unsigned long longPressDuration = 2000; // 2 secondes
 
 // Remember which mode we're doing
-int mode = 0;  // 0=stopped, 1=recording, 2=playing // à enlever ?
+int mode = 0;  // 0=stopped, 1=recording, 2=playing 
 int choiceButton = 0; //0..8=le  bouton sélectionné
 
 // The file where data is recorded
@@ -130,9 +136,9 @@ void setup() {
 
   //gain des mixers
   for (int i = 0; i < 4; i++) {
-    mixerA.gain(i, 0.5);
-    //mixerB.gain(i, 0.5); // A DECOMMENTER SI PLUS DE BOUTONS
-    //mixerC.gain(i, 0.5);
+    mixerA.gain(i, 0.25); 
+    mixerB.gain(i, 0.25); 
+    mixerC.gain(i, 0.25);
   }
 
   // Initialize the SD card
@@ -211,7 +217,7 @@ void loop() {
   }
 
   // Enregistrement
-  bool stateREC = readMux(BUTTON_MUX_CH); 
+  bool stateREC = readMux(BUTTON_REC); 
   // Détection de clic (changement d'état)
   if (stateREC != lastStateREC) {
     lastClickTimeREC = millis(); // Reset le timer de rebond
@@ -253,7 +259,7 @@ void selectChannel(int channel) {
 int readMux(int channel) {
   selectChannel(channel);
   delayMicroseconds(5); // petit temps de stabilisation
-  return !digitalRead(SIG_PIN); // ! car on a mis input pullup pour éviter d'avoir à utiliser des résistances
+  return digitalRead(SIG_PIN); // peut être ajouter un ! devant le digitalread (logique bizarre, même avec le input pullup)
 }
 
 void startRecording() {
