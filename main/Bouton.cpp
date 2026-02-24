@@ -1,7 +1,7 @@
 #include "Bouton.h"
 
-Bouton::Bouton(int number, int buttonPin)
-: num(number), pin(buttonPin)
+Bouton::Bouton(int number) //, int buttonPin
+: num(number) //, pin(buttonPin)
 {
     state = LOW;
     lastState = LOW;
@@ -12,16 +12,19 @@ Bouton::Bouton(int number, int buttonPin)
     // Création dynamique des connexions
     patchCord1 = new AudioConnection(playRaw, pitch);
     patchCord2 = new AudioConnection(pitch, noise);
-    patchCord4 = new AudioConnection(noise, mixer1);
+    // patchCord4 = new AudioConnection(noise, mixer1);
+    patchCord4 = new AudioConnection(noise, bitcrusher);
+
     //patchCord5 = new AudioConnection(varispeed, mixer1); 
 
-    patchCord7 = new AudioConnection(mixer1, 0, delay1, 0);
-    patchCord8 = new AudioConnection(delay1, 0, filter1, 0);
-    patchCord9 = new AudioConnection(filter1, 0, mixer1, 1);
-    patchCord10 = new AudioConnection(mixer1, 0, reverb1, 0);
-    patchCord11 = new AudioConnection(reverb1, 0, mixer1, 0);
+    //pbm de mémoire
+    // patchCord7 = new AudioConnection(mixer1, 0, delay1, 0);
+    // patchCord8 = new AudioConnection(delay1, 0, filter1, 0);
+    // patchCord9 = new AudioConnection(filter1, 0, mixer1, 1);
+    // patchCord10 = new AudioConnection(mixer1, 0, reverb1, 0);
+    // patchCord11 = new AudioConnection(reverb1, 0, mixer1, 0);
 
-    patchCord6 = new AudioConnection(mixer1, bitcrusher);
+    //patchCord6 = new AudioConnection(mixer1, bitcrusher);
 }
 
 void Bouton::begin() {
@@ -52,32 +55,32 @@ void Bouton::begin() {
     bitcrusher.bits(16);
 
     // Reverb
-    mixer1.gain(0, 1.0);  // Volume direct
-    mixer1.gain(1, 0.0); // Baisse de l'echo
-    mixer1.gain(2, 0.0);  // reverb OFF au départ
-    reverb1.reverbTime(0.6); // Temps de réverbération court pour lisser le son
-    filter1.frequency(1000); 
-    filter1.resonance(1.5);
+    // mixer1.gain(0, 1.0);  // Volume direct
+    // mixer1.gain(1, 0.0); // Baisse de l'echo
+    // mixer1.gain(2, 0.0);  // reverb OFF au départ
+    // reverb1.reverbTime(0.6); // Temps de réverbération court pour lisser le son
+    // filter1.frequency(1000); 
+    // filter1.resonance(1.5);
 }
 
-void Bouton::update() {//pas utile parce qu'on le fait dans le main? mieux vaut le faire ici ou pas ?
+// void Bouton::update() {//pas utile parce qu'on le fait dans le main? mieux vaut le faire ici ou pas ?
 
-    state = digitalRead(pin);
+//     state = digitalRead(pin);
 
-    if (state == LOW && lastState == HIGH) {
-        pressStartTime = millis();
-        longPressTriggered = false;
-    }
+//     if (state == LOW && lastState == HIGH) {
+//         pressStartTime = millis();
+//         longPressTriggered = false;
+//     }
 
-    if (state == LOW && !longPressTriggered) {
-        if (millis() - pressStartTime > 800) {
-            longPressTriggered = true;
-            // action long press
-        }
-    }
+//     if (state == LOW && !longPressTriggered) {
+//         if (millis() - pressStartTime > 800) {
+//             longPressTriggered = true;
+//             // action long press
+//         }
+//     }
 
-    lastState = state;
-}
+//     lastState = state;
+// }
 
 void Bouton::play() {
   playRaw.stop(); // on l'arrête
@@ -127,7 +130,7 @@ void Bouton::changeEffectAmount(int delta) {
             break;
 
         case EFFECT_VARISPEED: {
-            double speed = 0.2 + (value / 1023.0) * 2.8;
+            double speed = 0.2 + (value / 1023.0) * 2.8; // entre 0.2 et 3 
             playRaw.setPlaybackRate(speed);
 
             speedCompensation = -log(speed) / log(2.0) * 12.0;
@@ -136,18 +139,18 @@ void Bouton::changeEffectAmount(int delta) {
             break;
         }
 
-        case EFFECT_REVERB: {
-            // 1. Réglage du temps de l'écho (0ms à 500ms)
-            int delayTime = map(value, 0, 1023, 0, 500);
-            delay1.delay(0, delayTime);
+        // case EFFECT_REVERB: {
+        //     // 1. Réglage du temps de l'écho (0ms à 500ms)
+        //     int delayTime = map(value, 0, 1023, 0, 500);
+        //     delay1.delay(0, delayTime);
 
-            // 2. Réglage du niveau de la réverb (0.0 à 1.0)
-            float wet = (float)value / 1023.0;  
-            mixer1.gain(2, wet);   // niveau reverb progressif
-            mixer1.gain(1, wet*0.5);   // niveau delay progressif limité à 0.7
+        //     // 2. Réglage du niveau de la réverb (0.0 à 1.0)
+        //     float wet = (float)value / 1023.0;  
+        //     mixer1.gain(2, wet);   // niveau reverb progressif
+        //     mixer1.gain(1, wet*0.5);   // niveau delay progressif limité à 0.7
 
-            break;
-        }
+        //     break;
+        // }
         
         case EFFECT_BITCRUSHER: {
             int rate = map(value, 0, 1023, 44100, 3000);
@@ -162,7 +165,7 @@ void Bouton::changeEffectAmount(int delta) {
 
 const char* Bouton::getEffectName(){
     static const char* names[] = {
-      "PITCH", "NOISE","VARISPEED", "REVERB", "BITCRUSHER"
+      "PITCH", "NOISE","VARISPEED",  "BITCRUSHER" //"REVERB",
     };
     return names[currentEffect];
 }
