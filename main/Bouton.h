@@ -11,7 +11,7 @@ enum EffectType {
   EFFECT_PITCH, 
   EFFECT_NOISE,
   EFFECT_VARISPEED,
-  EFFECT_REVERB,
+  //EFFECT_REVERB,
   EFFECT_BITCRUSHER,
   EFFECT_COUNT};
 
@@ -19,7 +19,7 @@ class Bouton {
 public:
     // ======== Données ========
     int num; // il n'y aura plus besoin de ces deux là au final, on regarde juste l'indice des boutons dans la liste avec le multiplexeur
-    int pin;
+    //int pin;
 
     char filename[20];
 
@@ -44,10 +44,10 @@ public:
 
     Pitch pitch;
     AudioEffectDynamics noise;
-    AudioMixer4              mixer1;
-    AudioEffectDelay         delay1;
-    AudioFilterStateVariable filter1;
-    AudioEffectReverb        reverb1;
+    // AudioMixer4              mixer1;
+    // AudioEffectDelay         delay1;
+    // AudioFilterStateVariable filter1;
+    // AudioEffectReverb        reverb1;
     AudioEffectBitcrusher bitcrusher;
 
     // ======== Connexions ========
@@ -68,7 +68,7 @@ public:
 
 
     // ======== Constructeur ========
-    Bouton(int number, int buttonPin);
+    Bouton(int number); //, int buttonPin
 
     void begin();
     void update(); //pas utile?
