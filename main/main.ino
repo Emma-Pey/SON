@@ -44,7 +44,7 @@ bool actionDeclencheeREC = false;
 const int myInput = AUDIO_INPUT_MIC;
 
 // encodeur
-bool lastStateEnc = LOW; //bouton changement état 
+bool lastStateEnc = HIGH; //bouton enc
 unsigned long lastClickTimeEnc = 0; // pour debounce l'encodeur
 Encoder myEnc(ENC_PIN_A, ENC_PIN_B);
 long oldPos = -999;
@@ -118,6 +118,10 @@ void setup() {
   pinMode(S3, OUTPUT);
   pinMode(SIG_PIN, INPUT_PULLUP);
 
+  //encodeur 
+  pinMode(ENC_PIN_A,INPUT_PULLUP);
+  pinMode(ENC_PIN_B,INPUT_PULLUP);
+
   pinMode(EFFECTS_PIN, INPUT_PULLUP); // on aura plus besoin de ça avec le MUX
   // Configure the pushbutton pins
   for (int i=0; i < MAX_VOICES ; i++) {
@@ -155,19 +159,19 @@ void setup() {
 
 void loop() {
   //volume 
-  int potValue = analogRead(VOL_PIN);
-  //Serial.println(potValue);
-  float vol = potValue/1023.0*0.5; // entre 0 et 0.5
-  //Serial.println(vol);
-  if (abs(vol-volValue)>=0.1) {
-    volValue = vol;
-    Serial.println(volValue);
-    for (int i = 0; i < 4; i++) {
-      mixerA.gain(i, volValue); 
-      mixerB.gain(i, volValue); 
-      mixerC.gain(i, volValue);
-    }
-  }
+  // int potValue = analogRead(VOL_PIN);
+  // //Serial.println(potValue);
+  // float vol = potValue/1023.0*0.5; // entre 0 et 0.5
+  // //Serial.println(vol);
+  // if (abs(vol-volValue)>=0.1) {
+  //   volValue = vol;
+  //   //Serial.println(volValue);
+  //   for (int i = 0; i < 4; i++) {
+  //     mixerA.gain(i, volValue); 
+  //     mixerB.gain(i, volValue); 
+  //     mixerC.gain(i, volValue);
+  //   }
+  // }
   //regarder tous les boutons 
   for (int i = 0; i < MAX_VOICES; i++) {
 
@@ -223,6 +227,7 @@ void loop() {
       long delta = newPos - oldPos;
       oldPos = newPos;
       if (delta != 0) {
+        //Serial.println("Tourne détecté");
         boutons[i].changeEffectAmount(delta);
       }
       lastStateEnc = stateEnc;
@@ -240,13 +245,14 @@ void loop() {
       //Serial.println("Doigt posé sur REC");
   }
 
-  // 2. Détection de l'appui long ou stable
+  // 2. Détection de l'appui stable
   if (stateREC == HIGH && !actionDeclencheeREC) {
       if (millis() - lastClickTimeREC >= 50) { // Un mini "debounce" de 50ms
           actionDeclencheeREC = true; // On verrouille pour ne le faire qu'une fois
           
           //Serial.println("Action REC déclenchée !");
-          if (mode == 0) startRecording();
+          if (mode == 0) {startRecording(); //Serial.println(mode);
+          }
           else if (mode == 1) stopRecording();
           else if (mode == 2) {
               stopPlaying();
@@ -298,6 +304,7 @@ void startRecording() {
   if (frec) {
     queue1.begin();
     mode = 1;
+    //Serial.println(mode);
   }
 }
 
