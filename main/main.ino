@@ -1,10 +1,5 @@
 //A FAIRE : 
-//// - tester avec plusieurs boutons
-//// - tester avec les 9 boutons (des trucs à décommenter pour que ça fonctionne)
 //// - potentiomètre pour le son
-//// - multiplexeur avec 1, 2, ..., 10 boutons
-      // - boutons pour jouer un son
-      // - bouton d'enregistrement
 //// - encodeur
       // - click pour changement d'effet
       // - tourner pour changer la valeur (notamment ajuster le facteur dans bouton.cpp)
@@ -15,6 +10,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include <SerialFlash.h>
+#include <cmath> //abs
 #include <Encoder.h> // librairie encodeur optimisée pour teensy
 #include "Bouton.h"
 
@@ -35,11 +31,15 @@
 #define ENC_PIN_A 17 //A MODIFIER AVEC LES NUMEROS DE PIN DE L'ENCODEUR
 #define ENC_PIN_B 22
 
+#define VOL_PIN A0
+float volValue=0.25;
+
 // bouton enregistrement
 bool lastStateREC = LOW; 
 unsigned long lastClickTimeREC = 0;
 unsigned long debounceDelay = 50; // 50ms pour filtrer les parasites
 const int BUTTON_REC = 9;    // bouton enregistrement (le 10e)
+bool actionDeclencheeREC = false;
 
 const int myInput = AUDIO_INPUT_MIC;
 
@@ -136,9 +136,9 @@ void setup() {
 
   //gain des mixers
   for (int i = 0; i < 4; i++) {
-    mixerA.gain(i, 0.25); 
-    mixerB.gain(i, 0.25); 
-    mixerC.gain(i, 0.25);
+    mixerA.gain(i, volValue); 
+    mixerB.gain(i, volValue); 
+    mixerC.gain(i, volValue);
   }
 
   // Initialize the SD card
@@ -154,7 +154,20 @@ void setup() {
 }
 
 void loop() {
-
+  //volume 
+  int potValue = analogRead(VOL_PIN);
+  //Serial.println(potValue);
+  float vol = potValue/1023.0*0.5; // entre 0 et 0.5
+  //Serial.println(vol);
+  if (abs(vol-volValue)>=0.1) {
+    volValue = vol;
+    Serial.println(volValue);
+    for (int i = 0; i < 4; i++) {
+      mixerA.gain(i, volValue); 
+      mixerB.gain(i, volValue); 
+      mixerC.gain(i, volValue);
+    }
+  }
   //regarder tous les boutons 
   for (int i = 0; i < MAX_VOICES; i++) {
 
@@ -166,10 +179,10 @@ void loop() {
       boutons[i].longPressTriggered = false;
     }
 
-    // Bouton maintenu : sélectionner le bouton si > 3s
+    // Bouton maintenu : sélectionner le bouton si > 2s
     if (boutons[i].state == HIGH && !boutons[i].longPressTriggered) {
       if (millis() - boutons[i].pressStartTime >= longPressDuration) {
-        choiceButton = i;  //boutons[i].num // on stocke l'index du bouton
+        choiceButton = boutons[i].num;  // on stocke l'index du bouton
         boutons[i].longPressTriggered = true;
 
         Serial.print("Bouton sélectionné : ");
@@ -180,7 +193,7 @@ void loop() {
       }
     }
 
-    // Bouton relâché : jouer un son si < 3s
+    // Bouton relâché : jouer un son si < 2s
     if (boutons[i].lastState == HIGH && boutons[i].state == LOW) {
       boutons[i].longPressTriggered = false;
       if (millis() - boutons[i].pressStartTime < longPressDuration) { // on a juste cliqué sur le bouton
@@ -198,7 +211,8 @@ void loop() {
       bool stateEnc = digitalRead(EFFECTS_PIN);
       if (lastStateEnc == LOW && stateEnc == HIGH) { 
         if (millis() - lastClickTimeEnc > debounceDelay) { // debounce
-          lastClickTimeEnc = millis();
+      //if (encButton.fallingEdge()) {
+          //lastClickTimeEnc = millis();
           boutons[i].nextEffect();
           Serial.println(boutons[i].getEffectName());
         }
@@ -216,28 +230,37 @@ void loop() {
     boutons[i].lastState = boutons[i].state;
   }
 
-  // Enregistrement
-  bool stateREC = readMux(BUTTON_REC); 
-  // Détection de clic (changement d'état)
-  if (stateREC != lastStateREC) {
-    lastClickTimeREC = millis(); // Reset le timer de rebond
+  // --- PARTIE ENREGISTREMENT (Strictement comme les autres boutons) ---
+  bool stateREC = readMux(BUTTON_REC);
+
+  // 1. Détection du front montant (Appui)
+  if (stateREC == HIGH && lastStateREC == LOW) {
+      lastClickTimeREC = millis(); // On enregistre le moment exact de l'appui
+      actionDeclencheeREC = false;   // On autorise une nouvelle action
+      //Serial.println("Doigt posé sur REC");
   }
-  if ((millis() - lastClickTimeREC) > debounceDelay) {
-    // Si l'état a changé et est stable
-    if (stateREC == HIGH && lastStateREC == LOW) { 
-      // Le bouton vient d'être pressé (LOW car Pullup)
-      if (mode == 0) { // On est à l'arrêt -> on enregistre
-        startRecording();
-      } 
-      else if (mode == 1) { // On enregistre -> on arrête
-        stopRecording();
+
+  // 2. Détection de l'appui long ou stable
+  if (stateREC == HIGH && !actionDeclencheeREC) {
+      if (millis() - lastClickTimeREC >= 50) { // Un mini "debounce" de 50ms
+          actionDeclencheeREC = true; // On verrouille pour ne le faire qu'une fois
+          
+          //Serial.println("Action REC déclenchée !");
+          if (mode == 0) startRecording();
+          else if (mode == 1) stopRecording();
+          else if (mode == 2) {
+              stopPlaying();
+              startRecording();
+          }
       }
-      else if (mode == 2) { // On jouait -> on arrête et on peut ré-enregistrer
-        stopPlaying();
-        startRecording();
-      }
-    }
   }
+
+  // 3. Détection du relâchement (Optionnel, pour reset le verrou)
+  if (stateREC == LOW && lastStateREC == HIGH) {
+      actionDeclencheeREC = false;
+      //Serial.println("Doigt retiré de REC");
+  }
+
   lastStateREC = stateREC;
 
   // If we're playing or recording, carry on...
