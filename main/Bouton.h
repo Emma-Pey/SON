@@ -34,8 +34,6 @@ public:
     unsigned long pressStartTime;
     bool longPressTriggered;
 
-    float gain;   // 0.0 → 1.0 ?
-
     float basePitch;       // pitch manuel de l'utilisateur
     float speedCompensation; // compensation liée à la vitesse
 
@@ -73,8 +71,6 @@ public:
     void begin();
     void update(); //pas utile?
     void play();
-
-    void setGain(float g);
 
     void nextEffect();
     void changeEffectAmount(int delta);
