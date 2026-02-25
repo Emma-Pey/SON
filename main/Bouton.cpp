@@ -7,7 +7,7 @@ Bouton::Bouton(int number) //, int buttonPin
     lastState = LOW;
     pressStartTime = 0;
     longPressTriggered = false;
-    gain = 1.0;
+    //gain = 1.0;
 
     // Création dynamique des connexions
     patchCord1 = new AudioConnection(playRaw, pitch);
@@ -87,11 +87,6 @@ void Bouton::play() {
   playRaw.playRaw(filename,1); // on le relance
 }
 
-// Effets
-void Bouton::setGain(float g) {
-    gain = constrain(g, 0.0, 1.0);
-}
-
 void Bouton::nextEffect() {
   currentEffect++;
   // potLocked = true;  // On relock le potentiomètre
@@ -101,7 +96,6 @@ void Bouton::nextEffect() {
 void Bouton::changeEffectAmount(int delta) {
 
 
-    // A ENLEVER POUR UTILISER L'ENCODEUR
     // Si le pot n’a pas encore rattrapé la valeur mémorisée
 
     // int currentValue = effectValues[currentEffect];
