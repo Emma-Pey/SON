@@ -109,7 +109,7 @@ void Bouton::changeEffectAmount(int delta) {
 
     //effectValues[currentEffect] = value;
 
-    effectValues[currentEffect] += delta * 4; // sensibilité, changer le *4 par *8, *16 si on veut que chaque cran de l'encodeur modifie plus vite
+    effectValues[currentEffect] += delta * 10; // sensibilité, changer le *4 par *8, *16 si on veut que chaque cran de l'encodeur modifie plus vite
     effectValues[currentEffect] = constrain(effectValues[currentEffect], 0, 1023);
     float value = effectValues[currentEffect];
 
