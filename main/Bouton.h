@@ -1,3 +1,5 @@
+#include <_Teensy.h>
+
 #ifndef BOUTON_H
 #define BOUTON_H
 
