@@ -1,8 +1,5 @@
 //A FAIRE : 
-//// - potentiomètre pour le son
-//// - encodeur
-      // - click pour changement d'effet
-      // - tourner pour changer la valeur (notamment ajuster le facteur dans bouton.cpp)
+//// - potentiomètre pour le son (à retester)
 
 #include <Bounce.h>
 #include <Audio.h>
@@ -31,7 +28,7 @@
 #define ENC_PIN_A 17 //A MODIFIER AVEC LES NUMEROS DE PIN DE L'ENCODEUR
 #define ENC_PIN_B 22
 
-#define VOL_PIN A0
+#define VOL_PIN A0 // A MODIFIER SI PAS CELUI LA
 float volValue=0.25;
 
 // bouton enregistrement
@@ -159,19 +156,19 @@ void setup() {
 
 void loop() {
   //volume 
-  // int potValue = analogRead(VOL_PIN);
-  // //Serial.println(potValue);
-  // float vol = potValue/1023.0*0.5; // entre 0 et 0.5
-  // //Serial.println(vol);
-  // if (abs(vol-volValue)>=0.1) {
-  //   volValue = vol;
-  //   //Serial.println(volValue);
-  //   for (int i = 0; i < 4; i++) {
-  //     mixerA.gain(i, volValue); 
-  //     mixerB.gain(i, volValue); 
-  //     mixerC.gain(i, volValue);
-  //   }
-  // }
+  int potValue = analogRead(VOL_PIN);
+  //Serial.println(potValue);
+  float vol = potValue/1023.0*0.5; // entre 0 et 0.5
+  //Serial.println(vol);
+  if (abs(vol-volValue)>=0.1) {
+    volValue = vol;
+    //Serial.println(volValue);
+    for (int i = 0; i < 4; i++) {
+      mixerA.gain(i, volValue); 
+      mixerB.gain(i, volValue); 
+      mixerC.gain(i, volValue);
+    }
+  }
   //regarder tous les boutons 
   for (int i = 0; i < MAX_VOICES; i++) {
 
