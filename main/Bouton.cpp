@@ -28,16 +28,8 @@ Bouton::Bouton(int number) //, int buttonPin
 }
 
 void Bouton::begin() {
-    // pinMode(pin, INPUT); //plus besoin de ça avec le MUX
-    sprintf(filename, "BUTTON%d.RAW", num); //créer le nom du fichier
+    sprintf(filename, "BUTTON%d.WAV", num);
 
-    // Speed
-    playRaw.setPlaybackRate(1.0f); // 1.0 = normal, >1 = plus rapide, <1 = plus lent
-    playRaw.enableInterpolation(true);
-    playRaw.setPlaybackRate(1.0);
-
-    basePitch = 0.0;  
-    speedCompensation = 0.0; 
 
     // Noise Gate
     noise.gate(
@@ -83,8 +75,8 @@ void Bouton::begin() {
 // }
 
 void Bouton::play() {
-  playRaw.stop(); // on l'arrête
-  playRaw.playRaw(filename,1); // on le relance
+  playRaw.stop();
+  playRaw.play(filename);
 }
 
 void Bouton::nextEffect() {
@@ -124,12 +116,7 @@ void Bouton::changeEffectAmount(int delta) {
             break;
 
         case EFFECT_VARISPEED: {
-            double speed = 0.2 + (value / 1023.0) * 2.8; // entre 0.2 et 3 
-            playRaw.setPlaybackRate(speed);
-
-            speedCompensation = -log(speed) / log(2.0) * 12.0;
-            pitch.setParamValue("shift (semitones)", speedCompensation + basePitch); //compensation en prenant en compte la valeur actuelle du pitch
-            //Serial.println(speedCompensation);
+            // VARISPEED non compatible avec AudioPlaySdWav
             break;
         }
 

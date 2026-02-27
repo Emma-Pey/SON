@@ -40,7 +40,7 @@ public:
     float speedCompensation; // compensation liée à la vitesse
 
     // ======== Audio Objects ========
-    AudioPlaySdResmp playRaw;
+    AudioPlaySdWav playRaw;
 
     Pitch pitch;
     AudioEffectDynamics noise;

@@ -5,28 +5,24 @@
 #include <SerialFlash.h>
 #include "Bouton.h"
 
-// --- CONFIGURATION SD ---
 #define SDCARD_CS_PIN    10
 #define SDCARD_MOSI_PIN  7
 #define SDCARD_SCK_PIN   14
 
 #define MAX_VOICES 15
-#define VOL_PIN A0 
 
-// --- MAPPING DES TOUCHES LOUPEDECK ---
-// Remplace ces caractères par ceux envoyés par ton Loupedeck
-const char KEY_ENC_LEFT  = 't'; // Exemple : Molette vers la gauche
-const char KEY_ENC_RIGHT = 'u'; // Exemple : Molette vers la droite
-const char KEY_ENC_CLICK = 'q'; // Exemple : Clic sur la molette
+const char KEY_ENC_LEFT  = 't';
+const char KEY_ENC_RIGHT = 'u';
+const char KEY_ENC_CLICK = 'q';
 const char KEY_RECORD    = 'z';
+const char KEY_VOL_UP    = 's';
+const char KEY_VOL_DOWN  = 'r';
 
-// Touches pour déclencher les sons (1 à 9)
-char keyMap[MAX_VOICES] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i','j', 'k', 'l', 'm', 'n', 'o'};
+char keyMap[MAX_VOICES] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o'};
 
-// --- VARIABLES ---
-float volValue = 0.25;
-int choiceButton = 0; // Le bouton actuellement sélectionné pour les effets
-int mode = 0;         // 0=idle, 1=recording, 2=playing
+float volValue = 0.5;
+int choiceButton = 0;
+int mode = 0;
 char filename[20];
 File frec;
 
@@ -75,109 +71,117 @@ AudioConnection          patchCordOutR(mixerE, 0, i2s1, 1);
 
 void setup() {
   Serial.begin(9600);
-  
+
   AudioMemory(120);
   sgtl5000_1.enable();
   sgtl5000_1.inputSelect(AUDIO_INPUT_MIC);
-  sgtl5000_1.volume(0.5);
+  sgtl5000_1.volume(1.0);  // Volume max à la source
   sgtl5000_1.micGain(40);
 
-  //gain des mixers
-  for (int i = 0; i < 4; i++) {
-    mixerA.gain(i, volValue); 
-    mixerB.gain(i, volValue); 
-    mixerC.gain(i, volValue);
-    mixerD.gain(i, volValue);
-    mixerE.gain(i, volValue);
-  }
+  // Initialiser les gains des mixers avec le volume actuel
+  updateMixerGains();
 
   if (!(SD.begin(SDCARD_CS_PIN))) {
     while (1) { Serial.println("Erreur SD"); delay(500); }
   }
 
-  for (int i=0; i < MAX_VOICES ; i++) {
+  for (int i = 0; i < MAX_VOICES; i++) {
     boutons[i].begin();
   }
-  
-  Serial.println("Soundboard Prête (Attente touches Loupedeck)");
+
+  Serial.println("Soundboard prête");
+  Serial.print("Volume initial: ");
+  Serial.println(volValue);
 }
 
 void loop() {
-  // 1. GESTION DU VOLUME (Potentiomètre physique toujours actif)
-  readPhysicalVolume();
-
-  // 2. LECTURE DES TOUCHES (Entrées Loupedeck / Clavier)
   if (Serial.available()) {
     char key = Serial.read();
     handleInput(key);
   }
 
-  // 3. FLUX AUDIO
   if (mode == 1) continueRecording();
   if (mode == 2) continuePlaying();
 }
 
+void updateMixerGains() {
+  for (int i = 0; i < 4; i++) {
+    mixerA.gain(i, volValue);
+    mixerB.gain(i, volValue);
+    mixerC.gain(i, volValue);
+    mixerD.gain(i, volValue);
+    mixerE.gain(i, volValue);
+  }
+}
+
 void handleInput(char key) {
-  
-  // --- GESTION DE LA MOLETTE (EFFETS) ---
+  Serial.print("Touche: ");
+  Serial.println(key);
+
   if (key == KEY_ENC_LEFT) {
+    Serial.println("Effet -");
     boutons[choiceButton].changeEffectAmount(-1);
-    Serial.print("Effet - sur bouton "); Serial.println(choiceButton);
-  } 
+  }
   else if (key == KEY_ENC_RIGHT) {
+    Serial.println("Effet +");
     boutons[choiceButton].changeEffectAmount(1);
-    Serial.print("Effet + sur bouton "); Serial.println(choiceButton);
   }
   else if (key == KEY_ENC_CLICK) {
+    Serial.print("Effet: ");
+    Serial.println(boutons[choiceButton].getEffectName());
     boutons[choiceButton].nextEffect();
-    Serial.print("Changement effet: "); Serial.println(boutons[choiceButton].getEffectName());
   }
-
-  // --- GESTION ENREGISTREMENT ---
+  else if (key == KEY_VOL_UP) {
+    volValue = constrain(volValue + 0.1, 0.0, 1.0);
+    updateMixerGains();
+    Serial.print("Volume: ");
+    Serial.println(volValue);
+  }
+  else if (key == KEY_VOL_DOWN) {
+    volValue = constrain(volValue - 0.1, 0.0, 1.0);
+    updateMixerGains();
+    Serial.print("Volume: ");
+    Serial.println(volValue);
+  }
   else if (key == KEY_RECORD) {
-    if (mode == 0) startRecording();
-    else if (mode == 1) stopRecording();
+    if (mode == 0) {
+      Serial.println("REC START");
+      startRecording();
+    }
+    else if (mode == 1) {
+      Serial.println("REC STOP");
+      stopRecording();
+    }
   }
-
-  // --- GESTION DECLENCHEMENT SONS ---
   else {
     for (int i = 0; i < MAX_VOICES; i++) {
       if (key == keyMap[i]) {
-        choiceButton = i; // Sélectionne ce bouton pour la molette d'effets
+        choiceButton = i;
         sprintf(filename, "BUTTON%d.WAV", i);
-        
         if (mode == 1) stopRecording();
         startPlaying(i);
-        Serial.print("Lecture: "); Serial.println(filename);
       }
     }
   }
 }
 
-// --- FONCTIONS AUDIO REPRISES DE TON CODE ---
-
-void readPhysicalVolume() {
-  int potValue = analogRead(VOL_PIN);
-  float vol = potValue / 1023.0 * 0.6; 
-  if (abs(vol - volValue) >= 0.05) {
-    volValue = vol;
-    // On ajuste les gains des mixers ici
-    mixerC.gain(0, volValue);
-  }
-}
-
 void startRecording() {
-  sprintf(filename, "BUTTON%d.RAW", choiceButton);
+  sprintf(filename, "BUTTON%d.WAV", choiceButton);
+  Serial.print("REC FILE: ");
+  Serial.println(filename);
   if (SD.exists(filename)) SD.remove(filename);
   frec = SD.open(filename, FILE_WRITE);
   if (frec) {
     queue1.begin();
     mode = 1;
-    Serial.println("Enregistrement en cours...");
+    Serial.println("Recording...");
+  } else {
+    Serial.println("FILE ERROR");
   }
 }
 
 void stopRecording() {
+  Serial.println("REC STOP");
   queue1.end();
   while (queue1.available() > 0) {
     frec.write((byte*)queue1.readBuffer(), 256);
@@ -185,10 +189,24 @@ void stopRecording() {
   }
   frec.close();
   mode = 0;
-  Serial.println("Enregistrement fini.");
+  Serial.println("Saved");
 }
 
 void startPlaying(int i) {
+  if (!SD.exists(filename)) {
+    Serial.print("FILE NOT FOUND: ");
+    Serial.println(filename);
+    return;
+  }
+  Serial.print("PLAY: ");
+  Serial.println(filename);
+  // if this button is still playing, stop it first to avoid clicks
+  if (boutons[i].playRaw.isPlaying()) {
+    boutons[i].playRaw.stop();
+    delay(2);                 // allow hardware to settle
+  }
+  // mute output briefly to suppress transients
+  updateMixerGains();
   boutons[i].play();
   mode = 2;
   
